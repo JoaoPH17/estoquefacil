@@ -8,7 +8,7 @@ estoquefacil/
 ├── frontend/              React + Vite + TypeScript (telas)
 │   └── src/
 │       ├── App.tsx            Layout geral e navegação entre telas
-│       ├── pages/             Telas: Dashboard, Products, Movements, LowStock
+│       ├── pages/             Telas: Login, Dashboard, Products, Movements, LowStock
 │       ├── components/        Peças reutilizáveis: Sidebar, ProductModal, ConfirmModal, ui
 │       ├── hooks/useEstoque.ts  Estado do estoque (carrega e altera dados via API)
 │       ├── services/api.ts    ÚNICO arquivo que conversa com o backend
@@ -22,6 +22,7 @@ estoquefacil/
 │   │   ├── database.py        Conexão com o banco
 │   │   ├── models.py          Tabelas: produtos e movimentacoes
 │   │   ├── schemas.py         Validação dos dados de entrada e saída
+│   │   ├── auth.py            Login (/api/auth/login) e proteção das rotas
 │   │   ├── routers/           Rotas /api/produtos e /api/movimentacoes
 │   │   └── seed.py            15 produtos de exemplo
 │   ├── tests/                 Testes automáticos (pytest)
@@ -73,7 +74,7 @@ npm install
 npm run dev
 ```
 
-Abra **http://localhost:5173**. Em desenvolvimento, o Vite redireciona as chamadas `/api`
+Abra **http://localhost:5173** e entre com o usuário **`adm123`** e a senha **`012345`**. Em desenvolvimento, o Vite redireciona as chamadas `/api`
 para o backend em `localhost:8000`.
 
 **Testes do backend:**
@@ -86,8 +87,14 @@ pytest
 
 ## Rotas da API
 
+Todas as rotas de produtos e movimentações exigem login: envie o token recebido em
+`/api/auth/login` no cabeçalho `Authorization: Bearer <token>`. No `/docs`, use o botão
+**Authorize** para colar o token.
+
 | Método | Rota | O que faz |
 |---|---|---|
+| POST | `/api/auth/login` | Entra no sistema (`{"usuario": "adm123", "senha": "012345"}`) e devolve o token |
+| GET | `/api/auth/eu` | Confirma se o token ainda é válido |
 | GET | `/api/produtos?busca=arroz&estoque_baixo=true` | Lista produtos (filtros opcionais) |
 | GET | `/api/produtos/{id}` | Consulta um produto |
 | POST | `/api/produtos` | Cadastra produto |
@@ -148,6 +155,8 @@ São três partes, que podem ficar em serviços diferentes:
   - `DATABASE_URL` = URL do PostgreSQL
   - `CORS_ORIGINS` = endereço do frontend publicado, ex.: `https://estoquefacil.vercel.app`
   - `SEED_DATA` = `false`
+  - `ADMIN_USUARIO` e `ADMIN_SENHA` = login do sistema (troque o padrão `adm123` / `012345`)
+  - `SECRET_KEY` = valor longo e aleatório (`python -c "import secrets; print(secrets.token_hex(32))"`)
 - Health check: `/api/saude`
 
 **3. Frontend** (qualquer hospedagem de site estático, ex.: Vercel, Netlify, Cloudflare Pages):
@@ -162,8 +171,8 @@ Sem isso, o navegador bloqueia as chamadas.
 
 ## Próximos passos sugeridos
 
-- **Login:** hoje a API é aberta. Antes de colocar dados reais na internet, adicione
-  autenticação (usuário e senha do mercado), por exemplo com tokens JWT no FastAPI.
+- **Vários usuários:** hoje existe um único login, definido na configuração. Se o mercado
+  precisar de contas separadas, crie uma tabela de usuários com senhas criptografadas (bcrypt).
 - **Migrações com Alembic:** o `create_all` cria tabelas novas, mas não altera tabelas
   existentes. Se a estrutura mudar depois que houver dados reais, use Alembic.
 - **Backup:** ative o backup automático do provedor do PostgreSQL. A proposta lista a

@@ -1,4 +1,4 @@
-import { Box, ClipboardList, LayoutDashboard, Package, TriangleAlert, X } from "lucide-react";
+import { Box, ClipboardList, LayoutDashboard, LogOut, Package, TriangleAlert, X } from "lucide-react";
 import type { Page } from "@/types";
 
 const navItems: { id: Page; label: string; icon: typeof Box }[] = [
@@ -14,12 +14,16 @@ export function Sidebar({
   lowCount,
   onNavigate,
   onClose,
+  user,
+  onLogout,
 }: {
   page: Page;
   open: boolean;
   lowCount: number;
   onNavigate: (page: Page) => void;
   onClose: () => void;
+  user: string;
+  onLogout: () => void;
 }) {
   return (
     <>
@@ -55,8 +59,11 @@ export function Sidebar({
           <div className="market-avatar">MS</div>
           <div>
             <strong>Mercado Super Bom</strong>
-            <span>Controle de estoque</span>
+            <span>Usuário: {user}</span>
           </div>
+          <button className="icon-button logout-button" onClick={onLogout} aria-label="Sair" title="Sair">
+            <LogOut size={18} />
+          </button>
         </div>
       </aside>
 

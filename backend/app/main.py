@@ -6,10 +6,12 @@ Documentação interativa: http://localhost:8000/docs
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app.auth import exigir_login
+from app.auth import router as auth_router
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine
 from app.routers import movimentacoes, produtos
@@ -43,8 +45,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(produtos.router)
-app.include_router(movimentacoes.router)
+app.include_router(auth_router)
+# Produtos e movimentações só podem ser acessados por quem fez login.
+app.include_router(produtos.router, dependencies=[Depends(exigir_login)])
+app.include_router(movimentacoes.router, dependencies=[Depends(exigir_login)])
 
 
 @app.get("/api/saude", tags=["Sistema"])
