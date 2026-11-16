@@ -9,25 +9,38 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.auth import exigir_login
 from app.auth import router as auth_router
 from app.config import get_settings
-from app.database import Base, SessionLocal, engine
+from app.database import Base, engine
 from app.routers import movimentacoes, produtos
 from app.seed import popular_se_vazio
 
 settings = get_settings()
 
 
+def preparar_banco() -> None:
+    """Cria as tabelas que ainda não existem e, se SEED_DATA=true, os produtos de exemplo.
+
+    Na nuvem (ex.: Vercel) várias cópias da API podem iniciar ao mesmo tempo. No PostgreSQL
+    usamos uma trava (advisory lock) para que só uma faça isso por vez; as outras esperam
+    e encontram tudo pronto. Para mudanças de estrutura em um banco que já tem dados, o
+    próximo passo é adotar migrações com Alembic (ver README).
+    """
+    with engine.begin() as conexao:
+        if conexao.dialect.name == "postgresql":
+            conexao.execute(text("SELECT pg_advisory_xact_lock(7461)"))
+        Base.metadata.create_all(bind=conexao)
+        if settings.seed_data:
+            with Session(bind=conexao) as db:
+                popular_se_vazio(db)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Cria as tabelas que ainda não existem. Para mudanças de estrutura em um banco
-    # que já tem dados, o próximo passo é adotar migrações com Alembic (ver README).
-    Base.metadata.create_all(bind=engine)
-    if settings.seed_data:
-        with SessionLocal() as db:
-            popular_se_vazio(db)
+    preparar_banco()
     yield
 
 
