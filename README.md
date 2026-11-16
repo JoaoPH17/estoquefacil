@@ -140,34 +140,58 @@ TEST_DATABASE_URL=postgresql://usuario:senha@host:5432/banco_de_teste pytest
 
 > Use um banco **separado** para os testes: eles apagam as tabelas ao final.
 
-## Hospedar na nuvem
+## Hospedar na nuvem (Supabase + Vercel)
 
-São três partes, que podem ficar em serviços diferentes:
+São três partes: o banco no **Supabase** e dois projetos na **Vercel** (backend e frontend),
+ambos criados a partir deste mesmo repositório.
 
-**1. Banco de dados:** crie um PostgreSQL gerenciado e guarde a URL de conexão.
+### 1. Banco de dados (Supabase)
 
-**2. Backend** (qualquer serviço que rode Python ou Docker, ex.: Render, Railway, Fly.io):
-- Pasta raiz: `backend`
-- Comando de instalação: `pip install -r requirements.txt`
-- Comando de início: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-  (ou use o `Dockerfile`, que já faz isso)
-- Variáveis de ambiente:
-  - `DATABASE_URL` = URL do PostgreSQL
-  - `CORS_ORIGINS` = endereço do frontend publicado, ex.: `https://estoquefacil.vercel.app`
-  - `SEED_DATA` = `false`
-  - `ADMIN_USUARIO` e `ADMIN_SENHA` = login do sistema (troque o padrão `adm123` / `012345`)
-  - `SECRET_KEY` = valor longo e aleatório (`python -c "import secrets; print(secrets.token_hex(32))"`)
-- Health check: `/api/saude`
+1. Em [supabase.com](https://supabase.com), crie um projeto e **anote a senha do banco**.
+2. No projeto, clique em **Connect** e copie a URL do **Transaction pooler** (porta `6543`):
+   `postgresql://postgres.xxxx:[SUA-SENHA]@aws-0-xx.pooler.supabase.com:6543/postgres`
+3. Troque `[SUA-SENHA]` pela senha. Se ela tiver caracteres especiais (`@ # / : ?`),
+   escreva-os codificados (`@` → `%40`, `#` → `%23`), ou crie uma senha só com letras e números.
 
-**3. Frontend** (qualquer hospedagem de site estático, ex.: Vercel, Netlify, Cloudflare Pages):
-- Pasta raiz: `frontend`
-- Comando de build: `npm run build`
-- Pasta publicada: `dist`
-- Variável de ambiente: `VITE_API_URL` = endereço do backend publicado,
-  ex.: `https://estoquefacil-api.onrender.com`
+As tabelas são criadas sozinhas no primeiro acesso à API.
 
-Depois de publicar o frontend, confira se o endereço dele está em `CORS_ORIGINS` no backend.
-Sem isso, o navegador bloqueia as chamadas.
+### 2. Backend (Vercel)
+
+1. Na Vercel: **Add New → Project**, importe este repositório.
+2. **Root Directory:** `backend` · **Framework Preset:** Other.
+3. Em **Environment Variables**:
+   - `DATABASE_URL` = URL do Supabase (passo 1)
+   - `SECRET_KEY` = valor longo e aleatório (`python -c "import secrets; print(secrets.token_hex(32))"`)
+   - `ADMIN_USUARIO` e `ADMIN_SENHA` = login do sistema (troque o padrão `adm123` / `012345`)
+   - `SEED_DATA` = `true` só se quiser os 15 produtos de exemplo; senão `false`
+   - `CORS_ORIGINS` = endereço do frontend (preencha depois do passo 3)
+4. **Deploy.** Teste em `https://SEU-BACKEND.vercel.app/api/saude` → `{"status":"ok"}`.
+
+O backend usa `backend/api/index.py` e `backend/vercel.json` para rodar como função serverless.
+
+### 3. Frontend (Vercel)
+
+1. **Add New → Project**, importe o **mesmo** repositório de novo.
+2. **Root Directory:** `frontend` · **Framework Preset:** Vite (detectado sozinho).
+3. Variável de ambiente: `VITE_API_URL` = endereço do backend, ex.: `https://SEU-BACKEND.vercel.app`
+   (sem `/` no final).
+4. **Deploy.**
+
+### 4. Ligar os dois
+
+Copie o endereço do frontend (ex.: `https://estoquefacil.vercel.app`), coloque em
+`CORS_ORIGINS` no projeto do backend (**Settings → Environment Variables**) e faça
+**Redeploy** do backend. Sem isso, o navegador bloqueia as chamadas e o login mostra erro.
+
+> Variáveis da Vercel só valem depois de um novo deploy. Se mudar `VITE_API_URL`, faça
+> redeploy do frontend; se mudar qualquer outra, do backend.
+
+### Outras hospedagens
+
+O backend também roda em qualquer serviço com Python ou Docker (Render, Railway, Fly.io):
+instalação `pip install -r requirements.txt`, início
+`uvicorn app.main:app --host 0.0.0.0 --port $PORT` (ou o `Dockerfile`), mesmas variáveis
+de ambiente e health check em `/api/saude`.
 
 ## Próximos passos sugeridos
 
