@@ -1,17 +1,55 @@
 import { useEffect, useState } from "react";
 import { Box, Loader2, Menu, WifiOff } from "lucide-react";
+import * as api from "@/services/api";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ProductModal } from "@/components/ProductModal";
 import { Sidebar } from "@/components/Sidebar";
 import { EmptyState, Toast } from "@/components/ui";
 import { useEstoque } from "@/hooks/useEstoque";
 import { Dashboard } from "@/pages/Dashboard";
+import { Login } from "@/pages/Login";
 import { LowStock } from "@/pages/LowStock";
 import { Movements } from "@/pages/Movements";
 import { Products } from "@/pages/Products";
 import type { Page, Product } from "@/types";
 
 function App() {
+  const [session, setSession] = useState<api.Session | null>(() => api.getSession());
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    // Se o token expirar durante o uso, a API responde 401 e voltamos para o login.
+    api.setUnauthorizedHandler(() => {
+      setSession(null);
+      setNotice("Sua sessão expirou. Entre novamente.");
+    });
+  }, []);
+
+  if (!session) {
+    return (
+      <Login
+        notice={notice}
+        onLogin={(s) => {
+          setNotice("");
+          setSession(s);
+        }}
+      />
+    );
+  }
+
+  return (
+    <EstoqueApp
+      user={session.user}
+      onLogout={() => {
+        api.clearSession();
+        setSession(null);
+      }}
+    />
+  );
+}
+
+/** Sistema principal, exibido apenas depois do login. */
+function EstoqueApp({ user, onLogout }: { user: string; onLogout: () => void }) {
   const estoque = useEstoque();
   const [page, setPage] = useState<Page>("inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -96,6 +134,8 @@ function App() {
         lowCount={estoque.lowProducts.length}
         onNavigate={navigate}
         onClose={() => setSidebarOpen(false)}
+        user={user}
+        onLogout={onLogout}
       />
 
       <main className="main-content">

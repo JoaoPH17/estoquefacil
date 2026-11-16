@@ -19,15 +19,49 @@ export class ApiError extends Error {
   }
 }
 
+// ---------- Login (sessão) ----------
+
+const TOKEN_KEY = "estoquefacil.token";
+const USER_KEY = "estoquefacil.usuario";
+
+export type Session = { token: string; user: string };
+
+export function getSession(): Session | null {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const user = localStorage.getItem(USER_KEY);
+  return token && user ? { token, user } : null;
+}
+
+export function clearSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+/** Chamado quando a API responde 401 (token expirado/inválido). Definido pelo App. */
+let onUnauthorized: () => void = () => {};
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
+  const token = getSession()?.token;
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
     });
   } catch {
     throw new ApiError("Não foi possível conectar ao servidor. Verifique a internet.", 0);
+  }
+
+  if (response.status === 401 && token) {
+    clearSession();
+    onUnauthorized();
   }
 
   if (!response.ok) {
@@ -104,6 +138,18 @@ function toMovement(m: ApiMovement): Movement {
     note: m.observacao ?? undefined,
     date: m.data,
   };
+}
+
+// ---------- Login ----------
+
+export async function login(user: string, password: string): Promise<Session> {
+  const data = await request<{ token: string; usuario: string }>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ usuario: user, senha: password }),
+  });
+  localStorage.setItem(TOKEN_KEY, data.token);
+  localStorage.setItem(USER_KEY, data.usuario);
+  return { token: data.token, user: data.usuario };
 }
 
 // ---------- Produtos ----------

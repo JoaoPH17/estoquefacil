@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     # Deixe False em produção para não misturar dados de teste com dados reais.
     seed_data: bool = False
 
+    # Login do sistema. Em produção, troque usuário/senha e defina uma SECRET_KEY longa e
+    # aleatória (ex.: python -c "import secrets; print(secrets.token_hex(32))").
+    admin_usuario: str = "adm123"
+    admin_senha: str = "012345"
+    secret_key: str = "troque-esta-chave-em-producao"
+    # Por quantas horas o login continua válido.
+    token_horas: int = 12
+
     @field_validator("database_url")
     @classmethod
     def normalizar_url_postgres(cls, url: str) -> str:

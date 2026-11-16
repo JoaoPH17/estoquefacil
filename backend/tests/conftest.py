@@ -16,6 +16,8 @@ from app.main import app
 def client():
     Base.metadata.drop_all(bind=engine)
     with TestClient(app) as c:
+        r = c.post("/api/auth/login", json={"usuario": "adm123", "senha": "012345"})
+        c.headers["Authorization"] = f"Bearer {r.json()['token']}"
         yield c
     Base.metadata.drop_all(bind=engine)
 
