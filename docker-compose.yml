@@ -1,0 +1,33 @@
+# Sobe um PostgreSQL local (e, opcionalmente, a API) para testar antes de ir para a nuvem.
+#   Só o banco:        docker compose up -d db
+#   Banco + API:       docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: estoquefacil
+      POSTGRES_PASSWORD: estoquefacil
+      POSTGRES_DB: estoquefacil
+    ports:
+      - "5432:5432"
+    volumes:
+      - dados_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U estoquefacil"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://estoquefacil:estoquefacil@db:5432/estoquefacil
+      CORS_ORIGINS: http://localhost:5173
+      SEED_DATA: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dados_postgres:
